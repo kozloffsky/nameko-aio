@@ -2,4 +2,4 @@ venv
 .vscode
 *.pyc
 __pycache__
-__pycache__/*.*
+namekoaio/__pycache__

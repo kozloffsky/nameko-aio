@@ -6,11 +6,12 @@ import json
 RPC_QUEUE_TEMPLATE = 'rpc-{}'
 RPC_REPLY_QUEUE_TEMPLATE = 'rpc.reply-{}-{}'
 RPC_REPLY_QUEUE_TTL = 300000  # ms (5 mins)
+RPC_EXCHANGE_NAME = 'nameko-rpc'
 
 async def get_rpc_exchange():
     connnection = await aiormq.connect("amqp://rabbitmq:rabbitmq@localhost/")
     channel = await connnection.channel()
-    await channel.exchange_declare('nameko-rpc', exchange_type='topic', durable=True)
+    await channel.exchange_declare(RPC_EXCHANGE_NAME, exchange_type='topic', durable=True)
     return channel
 
 class MethodProxy:
@@ -54,7 +55,7 @@ class RpcProxy:
         self.reply_to = queue.queue
         self.routing_key = str(reply_queue_uuid)
 
-        await channel.queue_bind(queue.queue, 'nameko-rpc', routing_key=str(reply_queue_uuid))
+        await channel.queue_bind(queue.queue, RPC_EXCHANGE_NAME, routing_key=str(reply_queue_uuid))
         await channel.basic_consume(self.reply_to, self.handle_message)
         return self
 
@@ -79,7 +80,7 @@ class RpcProxy:
 
         await channel.basic_publish(
             json.dumps(msg).encode(), routing_key=routing_key, mandatory=True,
-            exchange="nameko-rpc",
+            exchange=RPC_EXCHANGE_NAME,
             properties = aiormq.spec.Basic.Properties(
                 correlation_id=correlation_id,
                 reply_to=self.routing_key,
